@@ -72,6 +72,23 @@ func EncodeRowKeyWithHandle(tableID int64, handle int64) kv.Key {
 // DecodeRecordKey decodes the key and gets the tableID, handle.
 func DecodeRecordKey(key kv.Key) (tableID int64, handle int64, err error) {
 	/* Your code here */
+	if len(key) != RecordRowKeyLen {
+		return 0, 0, errors.New("len(key) != RecordRowKeyLen")
+	}
+	if !key.HasPrefix(tablePrefix) {
+		return 0, 0, errors.New("key don't start with tablePrefix")
+	}
+
+	key, tableID, err = codec.DecodeInt(key[1:])
+	if err != nil {
+		return
+	}
+
+	if !bytes.Equal(key[:2], recordPrefixSep) {
+		return 0, 0, errors.New("key don't analyse recordPrefixSep")
+	}
+
+	key, handle, err = codec.DecodeInt(key[2:])
 	return
 }
 
@@ -95,6 +112,29 @@ func EncodeIndexSeekKey(tableID int64, idxID int64, encodedValue []byte) kv.Key 
 // DecodeIndexKeyPrefix decodes the key and gets the tableID, indexID, indexValues.
 func DecodeIndexKeyPrefix(key kv.Key) (tableID int64, indexID int64, indexValues []byte, err error) {
 	/* Your code here */
+	if len(key) <= prefixLen+idLen {
+		return 0, 0, nil, errors.New("len(key) <= prefixLen+idLen")
+	}
+
+	if !key.HasPrefix(tablePrefix) {
+		return 0, 0, nil, errors.New("key don't start with tablePrefix")
+	}
+
+	key, tableID, err = codec.DecodeInt(key[1:])
+	if err != nil {
+		return
+	}
+
+	if !bytes.Equal(key[:2], indexPrefixSep) {
+		return 0, 0, nil, errors.New("key don't analyse indexPrefixSep")
+	}
+
+	key, indexID, err = codec.DecodeInt(key[2:10])
+	if err != nil {
+		return 0, 0, nil, err
+	}
+
+	indexValues = key[10:]
 	return tableID, indexID, indexValues, nil
 }
 
@@ -138,7 +178,6 @@ func DecodeValuesBytesToStrings(b []byte) ([]string, error) {
 	}
 	return datumValues, nil
 }
-
 
 // EncodeRow encode row data and column ids into a slice of byte.
 // Row layout: colID1, value1, colID2, value2, .....
