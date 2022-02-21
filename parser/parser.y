@@ -871,6 +871,8 @@ import (
 	VariableAssignmentList	"set variable value list"
 	WhereClause		"WHERE clause"
 	WhereClauseOptional	"Optional WHERE clause"
+	OnClause		"On clause"
+        OnClauseOptional	"Optional On clause"
 	WithValidation		"with validation"
 	WithValidationOpt	"optional with validation"
 	Type			"Types"
@@ -3803,6 +3805,21 @@ IndexHintListOpt:
 		$$ = $1
 	}
 
+OnClause:
+	"ON" Expression
+	{
+		$$ = $2
+	}
+
+OnClauseOptional:
+	{
+		$$ = nil
+	}
+|	OnClause
+	{
+		$$ = $1
+	}
+
 JoinTable:
 	/* Use %prec to evaluate production TableRef before cross join */
 	TableRef CrossOpt TableRef %prec tableRefPriority
@@ -3810,6 +3827,18 @@ JoinTable:
 		$$ = &ast.Join{Left: $1.(ast.ResultSetNode), Right: $3.(ast.ResultSetNode), Tp: ast.CrossJoin}
 	}
 	/* Your code here. */
+|
+	TableRef JoinType "JOIN" TableRef "ON" Expression %prec tableRefPriority
+	{
+		$$ = &ast.Join {
+			Left: $1.(ast.ResultSetNode),
+			Right: $4.(ast.ResultSetNode),
+			Tp: $2.(ast.JoinType),
+			On: &ast.OnCondition {
+				Expr: $6.(ast.ExprNode),
+			},
+		}
+	}
 
 JoinType:
 	"LEFT"
